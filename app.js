@@ -253,6 +253,7 @@ function renderCard() {
   // 安全区参考线只在竖图模式且开关打开时显示
   $("safe-guides").classList.toggle("hidden", !isFrame || !state.guidesOn);
   $("guides-toggle").style.display = isFrame ? "" : "none";
+  $("live-btn").style.display = isFrame ? "" : "none";
 
   // 竖图模式：卡片浮动（整体缩放 + 可拖动）；长文先自动缩到画框内，再叠加用户缩放
   card.classList.toggle("floating", isFrame);
@@ -358,6 +359,104 @@ async function exportPng() {
   }
 }
 
+/* ---------- 导出 Live 图（3 秒动效 MP4，WebCodecs 编码） ----------
+   背景缓慢推近 + 卡片轻微呼吸上浮，文字保持静止清晰。
+   手机端用 intoLive / 快捷指令把 MP4 转成实况照片后即可按 Live 图发布。 */
+
+function drawCover(ctx, img, W, H, zoom) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const ir = iw / ih, r = W / H;
+  let dw, dh;
+  if (ir > r) { dh = H * zoom; dw = dh * ir; } else { dw = W * zoom; dh = dw / ir; }
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+async function exportLive() {
+  if (state.mode === "card") return;
+  if (!("VideoEncoder" in window)) {
+    alert("当前浏览器不支持视频编码（WebCodecs）。请使用新版 Chrome / Edge / Safari。");
+    return;
+  }
+  const btn = $("live-btn");
+  btn.disabled = true;
+  try {
+    const W = 1080, H = state.mode === "tall" ? 1920 : 1440;
+    const FPS = 30, DUR = 3, TOTAL = FPS * DUR;
+
+    const codec = { codec: "avc1.640028", width: W, height: H, bitrate: 8_000_000, framerate: FPS };
+    const support = await VideoEncoder.isConfigSupported(codec);
+    if (!support.supported) throw new Error("此设备不支持 H.264 1080p 编码");
+
+    // 卡片只光栅化一次，逐帧只做画布合成
+    btn.textContent = "准备卡片…";
+    const card = $("tweet-card");
+    const cardCanvas = await htmlToImage.toCanvas(card, { pixelRatio: 2 });
+    const s = (state.fitScale * state.cardScale) / 100;
+    const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
+    const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
+
+    const bg = new Image();
+    await new Promise((res, rej) => { bg.onload = res; bg.onerror = rej; bg.src = state.bg; });
+
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec: "avc", width: W, height: H },
+      fastStart: "in-memory",
+    });
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.error(e),
+    });
+    encoder.configure(codec);
+
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+
+    for (let f = 0; f < TOTAL; f++) {
+      const t = f / (TOTAL - 1);
+      const breathe = 0.5 - 0.5 * Math.cos(t * Math.PI * 2); // 0→1→0，收尾回原位
+      drawCover(ctx, bg, W, H, 1 + 0.06 * t);                // 背景缓慢推近
+      const cs = 1 + 0.012 * breathe;                        // 卡片轻微呼吸
+      const dy = -14 * breathe;                              // 轻微上浮
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.35)";
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 10;
+      ctx.drawImage(cardCanvas, cx - (cw * cs) / 2, cy + dy - (ch * cs) / 2, cw * cs, ch * cs);
+      ctx.restore();
+      const frame = new VideoFrame(cv, { timestamp: (f * 1e6) / FPS, duration: 1e6 / FPS });
+      encoder.encode(frame, { keyFrame: f % FPS === 0 });
+      frame.close();
+      if (f % 6 === 0) {
+        btn.textContent = `渲染 ${Math.round((f / TOTAL) * 100)}%`;
+        await new Promise((r) => setTimeout(r));
+      }
+    }
+    btn.textContent = "编码中…";
+    await encoder.flush();
+    muxer.finalize();
+
+    const blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
+    const a = document.createElement("a");
+    const tag = state.tab === "custom" ? "custom" : (state.selected ? state.selected.id : "empty");
+    a.download = `${state.profile.handle}-live-${todayISO().replaceAll("-", "")}-${tag}.mp4`;
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+
+    if (!localStorage.getItem("tcs-live-hint")) {
+      localStorage.setItem("tcs-live-hint", "1");
+      alert("已导出 3 秒动效 MP4。\n\n发布为 Live 图：把视频传到手机，用 intoLive（免费 App）或快捷指令转成实况照片，抖音/小红书发布时从相册选择即可带「实况」标识。");
+    }
+  } catch (err) {
+    alert("Live 图导出失败：" + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "导出 Live 图";
+  }
+}
+
 /* ---------- 事件绑定 ---------- */
 
 function bindSegmented(pairs, onChange) {
@@ -437,6 +536,7 @@ function bind() {
   };
 
   $("export-btn").onclick = exportPng;
+  $("live-btn").onclick = exportLive;
 
   /* ---- 账号信息 ---- */
   $("profile-name").oninput = (e) => { saveProfileOverride({ name: e.target.value || DEFAULT_PROFILE.name }); renderCard(); };
