@@ -75,7 +75,7 @@
           </div>
           <div class="option full">
             <span class="mini-label">卡片大小 <em id="scale-val"></em></span>
-            <input id="card-scale" type="range" min="50" max="140" value="100" />
+            <input id="card-scale" type="range" min="50" max="140" value="92" />
           </div>
           <div class="option full">
             <span class="mini-label">卡片透明度 <em id="opacity-val"></em></span>
@@ -129,6 +129,7 @@
         <span class="dot"></span><strong id="preview-label">3:4 竖图 · 1080×1440</strong>
         <span class="drag-hint" id="drag-hint">拖动卡片调整位置 · 双击回中</span>
         <div class="preview-actions">
+          <button id="guides-toggle" class="ghost-btn active">安全区 ✓</button>
           <a id="source-link" href="#" target="_blank" rel="noopener">查看原推 ↗</a>
           <button id="shuffle-metrics" class="ghost-btn">换一组数据</button>
           <button id="copy-text" class="ghost-btn">复制文案</button>
@@ -139,6 +140,16 @@
       <div class="stage-wrap">
         <div class="stage" id="stage">
           <img class="stage-bg" id="stage-bg" alt="" />
+          <!-- 抖音安全区参考线：仅预览显示，导出时自动排除 -->
+          <div class="safe-guides" id="safe-guides">
+            <div class="sg-line sg-top"></div>
+            <div class="sg-line sg-right"></div>
+            <div class="sg-line sg-bottom"></div>
+            <div class="sg-line sg-left"></div>
+            <span class="sg-label sg-label-top">状态栏 / 顶部导航</span>
+            <span class="sg-label sg-label-right">互动按钮</span>
+            <span class="sg-label sg-label-bottom">文案标题 / 音乐 / 评论</span>
+          </div>
           <div class="tweet-card" id="tweet-card">
             <div class="tc-head">
               <img class="tc-avatar" id="tc-avatar" src="avatar.png" alt="" />
