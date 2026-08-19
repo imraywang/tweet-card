@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>推文卡片工场 Tweet Card Studio</title>
+<link rel="icon" href="avatar.png" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="app-shell">
+  <header class="topbar">
+    <div class="brand-lockup">
+      <img class="brand-avatar" id="brand-avatar" src="avatar.png" alt="" />
+      <div>
+        <p class="eyebrow" id="brand-eyebrow">TWEET CARD STUDIO</p>
+        <h1>推文卡片工场</h1>
+      </div>
+    </div>
+    <div class="status-pill">选内容 · 选背景 · 导出图</div>
+  </header>
+
+  <div class="workspace">
+    <aside class="control-panel">
+
+      <section class="control-section">
+        <div class="section-heading"><span>01</span><div><h2>选择内容</h2><p>用历史推文，或直接写文案</p></div></div>
+        <div class="segmented" role="tablist">
+          <button id="tab-library" class="active">历史推文</button>
+          <button id="tab-custom">自定义文案</button>
+        </div>
+      </section>
+
+      <section class="control-section" id="library-section">
+        <div class="section-heading"><span>02</span><div><h2>素材库 <em id="lib-count"></em></h2><p>搜关键词，点一条直接上卡</p></div></div>
+        <div class="search-row">
+          <input id="search" type="search" placeholder="搜索：AI、流量、开源…" />
+          <button id="random-btn" class="icon-button" title="随机来一条">🎲</button>
+        </div>
+        <div class="chip-row" id="topic-chips"></div>
+        <div class="chip-row sort-row">
+          <span class="mini-label">排序</span>
+          <button class="chip sort-chip active" data-sort="new">最新</button>
+          <button class="chip sort-chip" data-sort="hot">最热</button>
+          <button class="chip sort-chip" data-sort="saved">最多收藏</button>
+        </div>
+        <ul class="post-list" id="post-list"></ul>
+      </section>
+
+      <section class="control-section hidden" id="custom-section">
+        <div class="section-heading"><span>02</span><div><h2>写文案</h2><p>支持换行，会实时上卡</p></div></div>
+        <textarea id="custom-text" rows="10" placeholder="写点什么……"></textarea>
+      </section>
+
+      <section class="control-section">
+        <div class="section-heading"><span>03</span><div><h2>样式</h2><p>成品形态与卡片外观</p></div></div>
+        <div class="segmented">
+          <button id="mode-poster" class="active">3:4 竖图</button>
+          <button id="mode-card">纯卡片</button>
+        </div>
+        <div class="option-grid">
+          <div class="option">
+            <span class="mini-label">卡片主题</span>
+            <div class="segmented small">
+              <button id="theme-light" class="active">白色</button>
+              <button id="theme-dark">黑色</button>
+            </div>
+          </div>
+          <div class="option">
+            <span class="mini-label">互动数据（随机）</span>
+            <div class="segmented small">
+              <button id="metrics-on" class="active">显示</button>
+              <button id="metrics-off">隐藏</button>
+            </div>
+          </div>
+          <div class="option full">
+            <span class="mini-label">卡片大小 <em id="scale-val"></em></span>
+            <input id="card-scale" type="range" min="50" max="140" value="100" />
+          </div>
+          <div class="option full">
+            <span class="mini-label">卡片透明度 <em id="opacity-val"></em></span>
+            <input id="card-opacity" type="range" min="30" max="100" value="100" />
+          </div>
+        </div>
+      </section>
+
+      <section class="control-section" id="bg-section">
+        <div class="section-heading"><span>04</span><div><h2>背景</h2><p>内置渐变，也可上传图片或贴 URL</p></div></div>
+        <div class="bg-grid" id="bg-grid"></div>
+        <div class="bg-import">
+          <label class="chip file-chip">上传图片<input id="bg-upload" type="file" accept="image/*" hidden /></label>
+          <input id="bg-url" type="url" placeholder="或粘贴图片 URL 后回车" />
+        </div>
+      </section>
+
+      <section class="control-section">
+        <div class="section-heading"><span>05</span><div><h2>账号信息</h2><p>换成你自己的身份，只保存在本机浏览器</p></div></div>
+        <div class="profile-row">
+          <img class="profile-avatar" id="profile-avatar-preview" src="avatar.png" alt="" />
+          <label class="chip file-chip">上传头像<input id="avatar-upload" type="file" accept="image/*" hidden /></label>
+        </div>
+        <div class="option-grid">
+          <div class="option">
+            <span class="mini-label">名称</span>
+            <input class="text-input" id="profile-name" placeholder="你的名字" />
+          </div>
+          <div class="option">
+            <span class="mini-label">用户名（不带 @）</span>
+            <input class="text-input" id="profile-handle" placeholder="yourname" />
+          </div>
+          <div class="option full">
+            <span class="mini-label">认证徽章</span>
+            <div class="segmented small">
+              <button id="badge-on">蓝 V</button>
+              <button id="badge-off">无</button>
+            </div>
+          </div>
+        </div>
+        <div class="chip-row">
+          <label class="chip file-chip">导入推文库 JSON<input id="posts-upload" type="file" accept=".json,application/json" hidden /></label>
+          <button class="chip" id="profile-reset">恢复默认</button>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="preview-panel">
+      <div class="preview-topbar">
+        <span class="dot"></span><strong id="preview-label">3:4 竖图 · 1080×1440</strong>
+        <span class="drag-hint" id="drag-hint">拖动卡片调整位置 · 双击回中</span>
+        <div class="preview-actions">
+          <a id="source-link" href="#" target="_blank" rel="noopener">查看原推 ↗</a>
+          <button id="shuffle-metrics" class="ghost-btn">换一组数据</button>
+          <button id="copy-text" class="ghost-btn">复制文案</button>
+          <button id="export-btn" class="primary-btn">下载 PNG</button>
+        </div>
+      </div>
+
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <img class="stage-bg" id="stage-bg" alt="" />
+          <div class="tweet-card" id="tweet-card">
+            <div class="tc-head">
+              <img class="tc-avatar" id="tc-avatar" src="avatar.png" alt="" />
+              <div class="tc-id">
+                <div class="tc-name"><span id="tc-name-text"></span>
+                  <svg class="tc-badge" id="tc-badge" viewBox="0 0 22 22"><path fill="#1d9bf0" d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"/></svg>
+                </div>
+                <div class="tc-handle"><span id="tc-handle-text"></span> · <span id="tc-date"></span></div>
+              </div>
+              <svg class="tc-x-logo" viewBox="0 0 24 24"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </div>
+            <div class="tc-body" id="tc-body"></div>
+            <div class="tc-metrics" id="tc-metrics"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="vendor/html-to-image.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

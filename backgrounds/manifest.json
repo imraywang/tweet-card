@@ -1,0 +1,134 @@
+[
+ {
+  "file": "photo-misty-marsh.jpg",
+  "name": "雾泽晨光"
+ },
+ {
+  "file": "photo-forest-coast.jpg",
+  "name": "森林海岸"
+ },
+ {
+  "file": "photo-pebble-beach.jpg",
+  "name": "冷调海滩"
+ },
+ {
+  "file": "photo-rocky-bay.jpg",
+  "name": "礁石海湾"
+ },
+ {
+  "file": "photo-snow-peaks.jpg",
+  "name": "雪山云影"
+ },
+ {
+  "file": "photo-dusk-forest.jpg",
+  "name": "暮色林线"
+ },
+ {
+  "file": "photo-flower-dusk.jpg",
+  "name": "花田黄昏"
+ },
+ {
+  "file": "photo-golden-field.jpg",
+  "name": "金色草原"
+ },
+ {
+  "file": "photo-desert-dusk.jpg",
+  "name": "沙丘暮色"
+ },
+ {
+  "file": "photo-forest-path.jpg",
+  "name": "林间小路"
+ },
+ {
+  "file": "photo-lighthouse.jpg",
+  "name": "灯塔黑白"
+ },
+ {
+  "file": "photo-white-town.jpg",
+  "name": "白色小镇"
+ },
+ {
+  "file": "photo-canal-town.jpg",
+  "name": "运河小镇"
+ },
+ {
+  "file": "photo-city-bridge-night.jpg",
+  "name": "大桥夜色"
+ },
+ {
+  "file": "photo-london-night.jpg",
+  "name": "伦敦夜色"
+ },
+ {
+  "file": "photo-foggy-street.jpg",
+  "name": "雾夜街灯"
+ },
+ {
+  "file": "photo-far-city-lights.jpg",
+  "name": "远城灯火"
+ },
+ {
+  "file": "photo-city-rooftops.jpg",
+  "name": "城市屋顶"
+ },
+ {
+  "file": "photo-city-crosswalk.jpg",
+  "name": "街头行人"
+ },
+ {
+  "file": "photo-old-town-door.jpg",
+  "name": "老城门廊"
+ },
+ {
+  "file": "photo-concrete-block.jpg",
+  "name": "清水混凝土"
+ },
+ {
+  "file": "photo-vintage-cars.jpg",
+  "name": "街角老爷车"
+ },
+ {
+  "file": "photo-cafe-silhouette.jpg",
+  "name": "街角咖啡馆"
+ },
+ {
+  "file": "ink-dawn.svg",
+  "name": "墨色黎明"
+ },
+ {
+  "file": "deep-forest.svg",
+  "name": "深林夜色"
+ },
+ {
+  "file": "ember.svg",
+  "name": "暮色余烬"
+ },
+ {
+  "file": "harbor.svg",
+  "name": "海港蓝调"
+ },
+ {
+  "file": "violet-night.svg",
+  "name": "紫夜"
+ },
+ {
+  "file": "slate.svg",
+  "name": "石板灰"
+ },
+ {
+  "file": "plum-smoke.svg",
+  "name": "烟紫"
+ },
+ {
+  "file": "midnight.svg",
+  "name": "午夜"
+ },
+ {
+  "file": "paper-warm.svg",
+  "name": "暖纸"
+ },
+ {
+  "file": "mist.svg",
+  "name": "晨雾"
+ }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sample-1",
+    "date": "2026-08-01",
+    "text": "这是一条示例推文 👋\n\n在左侧「05 账号信息」里换成你自己的头像、名称和用户名，然后用「导入推文库 JSON」换成你自己的推文。",
+    "topic": "使用提示",
+    "metrics": { "likes": 128, "replies": 12, "reposts": 34, "bookmarks": 56, "views": 20000 }
+  },
+  {
+    "id": "sample-2",
+    "date": "2026-07-28",
+    "text": "推文库的格式很宽容，每条只有 text 是必填的：\n\n[\n  { \"date\": \"2026-01-01\", \"text\": \"推文内容\", \"topic\": \"分类\" }\n]\n\nid、sourceUrl、metrics 都是可选的。",
+    "topic": "使用提示",
+    "metrics": { "likes": 86, "replies": 8, "reposts": 21, "bookmarks": 40, "views": 12000 }
+  },
+  {
+    "id": "sample-3",
+    "date": "2026-07-20",
+    "text": "卡片上的互动数据是随机生成的，点预览上方的「换一组数据」可以重新随机，也可以在样式里直接隐藏。",
+    "topic": "使用提示",
+    "metrics": { "likes": 64, "replies": 5, "reposts": 15, "bookmarks": 28, "views": 9000 }
+  },
+  {
+    "id": "sample-4",
+    "date": "2026-07-12",
+    "text": "试试这些操作：\n\n1️⃣ 拖动卡片调整位置，双击回中\n2️⃣ 滑杆调整卡片整体大小和透明度\n3️⃣ 换背景：内置图库、本地上传、图片 URL 都行\n4️⃣ 「纯卡片」模式导出透明背景 PNG",
+    "topic": "使用提示",
+    "metrics": { "likes": 210, "replies": 18, "reposts": 45, "bookmarks": 90, "views": 35000 }
+  },
+  {
+    "id": "sample-5",
+    "date": "2026-07-05",
+    "text": "不想选历史推文的话，切到「自定义文案」直接写，实时上卡。",
+    "topic": "使用提示",
+    "metrics": { "likes": 42, "replies": 3, "reposts": 9, "bookmarks": 17, "views": 6000 }
+  }
+]
