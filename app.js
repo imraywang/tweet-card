@@ -19,11 +19,13 @@ const state = {
   mode: "poster",        // poster | card
   theme: "light",        // light | dark
   metricsOn: true,
-  cardScale: 100,        // 用户设置的缩放（%），在 fitScale 基础上叠加
+  // 默认落在抖音安全区中央：右侧 140px / 底部 300px / 顶部 150px / 左侧 60px（画布px，预览折半）
+  cardScale: 92,         // 用户设置的缩放（%），在 fitScale 基础上叠加
   fitScale: 1,           // 长文自动适配画框的缩放
-  cardX: 0,              // 拖动偏移（px，相对画框中心）
-  cardY: 0,
+  cardX: -20,            // 拖动偏移（px，相对画框中心）
+  cardY: -37,
   cardOpacity: 100,
+  guidesOn: true,        // 抖音安全区参考线（仅预览，不进导出）
   search: "",
   topic: "全部",
   sort: "new",           // new | hot | saved
@@ -245,6 +247,10 @@ function renderCard() {
   $("preview-label").textContent = state.mode === "card" ? "纯卡片 · 透明背景 PNG" : "3:4 竖图 · 1080×1440";
   $("drag-hint").style.display = state.mode === "poster" ? "" : "none";
 
+  // 安全区参考线只在竖图模式且开关打开时显示
+  $("safe-guides").classList.toggle("hidden", state.mode !== "poster" || !state.guidesOn);
+  $("guides-toggle").style.display = state.mode === "poster" ? "" : "none";
+
   // 竖图模式：卡片浮动（整体缩放 + 可拖动）；长文先自动缩到画框内，再叠加用户缩放
   card.classList.toggle("floating", state.mode === "poster");
   if (state.mode === "poster") {
@@ -334,6 +340,7 @@ async function exportPng() {
     const dataUrl = await htmlToImage.toPng(stage, {
       pixelRatio,
       backgroundColor: state.mode === "card" ? undefined : "#000",
+      filter: (node) => node.id !== "safe-guides", // 参考线不进成品
     });
     const a = document.createElement("a");
     const tag = state.tab === "custom" ? "custom" : (state.selected ? state.selected.id : "empty");
@@ -418,6 +425,13 @@ function bind() {
   };
 
   $("shuffle-metrics").onclick = () => { rollMetrics(); renderCard(); };
+
+  $("guides-toggle").onclick = () => {
+    state.guidesOn = !state.guidesOn;
+    $("guides-toggle").textContent = state.guidesOn ? "安全区 ✓" : "安全区";
+    $("guides-toggle").classList.toggle("active", state.guidesOn);
+    renderCard();
+  };
 
   $("export-btn").onclick = exportPng;
 
