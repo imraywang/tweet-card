@@ -167,6 +167,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 .stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
+/* 9:16 竖图（1080×1920，预览 1/2 缩放）；安全区顶部改 175px（显示 88px） */
+.stage.tall { height: 960px; }
+.stage.tall .sg-top { top: 88px; }
+.stage.tall .sg-label-top { top: 92px; }
+
 /* 抖音安全区参考线（画布 1080×1440，预览为 1/2 缩放）：
    顶部 150px 状态栏/导航、右侧 140px 互动按钮列、底部 300px 文案/音乐/评论、左侧 60px 边距 */
 .safe-guides { position: absolute; inset: 0; pointer-events: none; z-index: 5; }

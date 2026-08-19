@@ -243,17 +243,20 @@ function renderCard() {
   }
 
   const stage = $("stage");
-  stage.classList.toggle("card-only", state.mode === "card");
-  $("preview-label").textContent = state.mode === "card" ? "纯卡片 · 透明背景 PNG" : "3:4 竖图 · 1080×1440";
-  $("drag-hint").style.display = state.mode === "poster" ? "" : "none";
+  const isFrame = state.mode !== "card"; // poster(3:4) 或 tall(9:16)
+  stage.classList.toggle("card-only", !isFrame);
+  stage.classList.toggle("tall", state.mode === "tall");
+  $("preview-label").textContent = state.mode === "card" ? "纯卡片 · 透明背景 PNG"
+    : state.mode === "tall" ? "9:16 竖图 · 1080×1920" : "3:4 竖图 · 1080×1440";
+  $("drag-hint").style.display = isFrame ? "" : "none";
 
   // 安全区参考线只在竖图模式且开关打开时显示
-  $("safe-guides").classList.toggle("hidden", state.mode !== "poster" || !state.guidesOn);
-  $("guides-toggle").style.display = state.mode === "poster" ? "" : "none";
+  $("safe-guides").classList.toggle("hidden", !isFrame || !state.guidesOn);
+  $("guides-toggle").style.display = isFrame ? "" : "none";
 
   // 竖图模式：卡片浮动（整体缩放 + 可拖动）；长文先自动缩到画框内，再叠加用户缩放
-  card.classList.toggle("floating", state.mode === "poster");
-  if (state.mode === "poster") {
+  card.classList.toggle("floating", isFrame);
+  if (isFrame) {
     requestAnimationFrame(() => {
       state.fitScale = Math.min(1, (stage.clientHeight * 0.92) / card.offsetHeight);
       applyCardTransform();
@@ -265,7 +268,7 @@ function renderCard() {
 
 function applyCardTransform() {
   const card = $("tweet-card");
-  if (state.mode !== "poster") return;
+  if (state.mode === "card") return;
   const s = (state.fitScale * state.cardScale) / 100;
   card.style.transform = `translate(-50%, -50%) translate(${state.cardX}px, ${state.cardY}px) scale(${s.toFixed(3)})`;
 }
@@ -276,7 +279,7 @@ function initDrag() {
   const stage = $("stage");
   let drag = null;
   card.addEventListener("pointerdown", (e) => {
-    if (state.mode !== "poster") return;
+    if (state.mode === "card") return;
     e.preventDefault();
     drag = { x0: e.clientX, y0: e.clientY, baseX: state.cardX, baseY: state.cardY };
     card.classList.add("dragging");
@@ -376,7 +379,7 @@ function bind() {
     renderCard();
   });
 
-  bindSegmented([[$("mode-poster"), "poster"], [$("mode-card"), "card"]], (v) => { state.mode = v; renderCard(); });
+  bindSegmented([[$("mode-poster"), "poster"], [$("mode-tall"), "tall"], [$("mode-card"), "card"]], (v) => { state.mode = v; renderCard(); });
   bindSegmented([[$("theme-light"), "light"], [$("theme-dark"), "dark"]], (v) => { state.theme = v; renderCard(); });
   bindSegmented([[$("metrics-on"), true], [$("metrics-off"), false]], (v) => { state.metricsOn = v; renderCard(); });
 
