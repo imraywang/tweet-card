@@ -123,6 +123,32 @@
         </div>
       </section>
 
+      <section class="control-section">
+        <div class="section-heading"><span>06</span><div><h2>用 X API 同步推文</h2><p>用你自己的 API Key（BYOK），头像昵称自动填好</p></div></div>
+        <input class="text-input" id="x-token" type="password" placeholder="X API Bearer Token" autocomplete="off" />
+        <div class="option-grid">
+          <div class="option">
+            <span class="mini-label">用户名（不带 @）</span>
+            <input class="text-input" id="x-handle" placeholder="yourname" />
+          </div>
+          <div class="option">
+            <span class="mini-label">拉取上限</span>
+            <select class="text-input" id="x-limit">
+              <option value="100">最近 100 条</option>
+              <option value="300" selected>最近 300 条</option>
+              <option value="500">最近 500 条</option>
+              <option value="3200">尽量全部（≤3200）</option>
+            </select>
+          </div>
+        </div>
+        <div class="chip-row">
+          <button class="chip" id="x-sync">开始同步</button>
+          <button class="chip" id="x-clear">清除 Key</button>
+          <span class="mini-label" id="x-status"></span>
+        </div>
+        <p class="mini-label">Key 只保存在你的浏览器本地（localStorage）；请求经 tools.upthos.com 无状态转发直达 X API（浏览器无法直连 api.x.com），不记录、不存储。每条推文消耗你 X 套餐的 posts read 配额，需 Basic 及以上。同一账号再次同步自动增量。</p>
+      </section>
+
     </aside>
 
     <section class="preview-panel">
