@@ -43,6 +43,7 @@
           <button class="chip sort-chip active" data-sort="new">最新</button>
           <button class="chip sort-chip" data-sort="hot">最热</button>
           <button class="chip sort-chip" data-sort="saved">最多收藏</button>
+          <select class="chip" id="month-filter"></select>
         </div>
         <ul class="post-list" id="post-list"></ul>
       </section>
@@ -126,7 +127,7 @@
       <section class="control-section">
         <div class="section-heading"><span>06</span><div><h2>用 X API 同步推文</h2><p>用你自己的 API Key（BYOK），头像昵称自动填好</p></div></div>
         <input class="text-input" id="x-token" type="password" placeholder="Bearer Token（AAAA 开头的长字符串）" autocomplete="off" />
-        <p class="mini-label">新建 App 会给三种凭证，这里<strong>只用 Bearer Token</strong>：Developer Portal → 你的 App → Keys and tokens → Bearer Token（丢了点 Regenerate 重新生成）。API Key 和 API Key Secret 本工具用不到，也不要粘贴到任何网页。</p>
+        <p class="mini-label">还没有 Key？<a href="https://developer.x.com/en/portal/dashboard" target="_blank" rel="noopener"><strong>去 X Developer Portal 创建 ↗</strong></a>　新建 App → Keys and tokens，只复制 <strong>Bearer Token</strong>；API Key / Secret 用不到。</p>
         <div class="option-grid">
           <div class="option">
             <span class="mini-label">用户名（不带 @）</span>
@@ -147,7 +148,7 @@
           <button class="chip" id="x-clear">清除 Key</button>
           <span class="mini-label" id="x-status"></span>
         </div>
-        <p class="mini-label">Key 只保存在你的浏览器本地（localStorage）；请求经 tools.upthos.com 无状态转发直达 X API（浏览器无法直连 api.x.com），不记录、不存储。X API 现为按量付费（已无 Free/Basic 订阅）：推文读取约 $0.005/条，同步 300 条约 $1.5，需先在 X Developer Console 充值 credits；24 小时内重复读取同一条只计费一次。同一账号再次同步自动增量。</p>
+        <p class="mini-label">Key 只存你的浏览器本地；请求经 tools.upthos.com 无状态转发，不记录、不存储。X API 按量计费约 $0.005/条（同步 300 条 ≈ $1.5，需先在 Console 充值）；同一账号再次同步自动增量。</p>
       </section>
 
     </aside>
