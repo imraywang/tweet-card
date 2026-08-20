@@ -553,7 +553,7 @@ async function xSync() {
 }
 
 /* ---------- 导出 Live 图（3 秒动效 MP4，WebCodecs 编码） ----------
-   背景缓慢推近 + 卡片轻微呼吸上浮，文字保持静止清晰。
+   卡片完全静止，只有背景缓慢推近（Ken Burns）。
    手机端用 intoLive / 快捷指令把 MP4 转成实况照片后即可按 Live 图发布。 */
 
 function drawCover(ctx, img, W, H, zoom) {
@@ -620,15 +620,12 @@ async function exportLive() {
 
     for (let f = 0; f < TOTAL; f++) {
       const t = f / (TOTAL - 1);
-      const breathe = 0.5 - 0.5 * Math.cos(t * Math.PI * 2); // 0→1→0，收尾回原位
-      drawCover(ctx, bg, W, H, 1 + 0.06 * t);                // 背景缓慢推近
-      const cs = 1 + 0.012 * breathe;                        // 卡片轻微呼吸
-      const dy = -14 * breathe;                              // 轻微上浮
+      drawCover(ctx, bg, W, H, 1 + 0.07 * t); // 只动背景：缓慢推近
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.35)";
       ctx.shadowBlur = 40;
       ctx.shadowOffsetY = 10;
-      ctx.drawImage(cardCanvas, cx - (cw * cs) / 2, cy + dy - (ch * cs) / 2, cw * cs, ch * cs);
+      ctx.drawImage(cardCanvas, cx - cw / 2, cy - ch / 2, cw, ch); // 卡片完全静止
       ctx.restore();
       const frame = new VideoFrame(cv, { timestamp: (f * 1e6) / FPS, duration: 1e6 / FPS });
       encoder.encode(frame, { keyFrame: f % FPS === 0 });
