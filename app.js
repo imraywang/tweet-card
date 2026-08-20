@@ -27,7 +27,8 @@ const state = {
   cardOpacity: 100,
   guidesOn: true,        // 抖音安全区参考线（仅预览，不进导出）
   search: "",
-  topic: "全部",
+  chip: { kind: "all", v: "" },
+  month: "",
   sort: "new",           // new | hot | saved
   bg: null,              // 当前背景的 URL / dataURL
   fakeMetrics: null,     // 卡片上显示的随机互动数据
@@ -120,7 +121,9 @@ function normalizePosts(arr) {
 function applyFilter() {
   const q = state.search.trim().toLowerCase();
   let list = state.posts;
-  if (state.topic !== "全部") list = list.filter((p) => p.topic === state.topic);
+  if (state.chip.kind === "topic") list = list.filter((p) => p.topic === state.chip.v);
+  else if (state.chip.kind === "tag") list = list.filter((p) => (p.tags || []).includes(state.chip.v));
+  if (state.month) list = list.filter((p) => p.date.startsWith(state.month));
   if (q) list = list.filter((p) => p.text.toLowerCase().includes(q));
   if (state.sort === "hot") list = [...list].sort((a, b) => b.metrics.likes - a.metrics.likes);
   else if (state.sort === "saved") list = [...list].sort((a, b) => b.metrics.bookmarks - a.metrics.bookmarks);
@@ -128,18 +131,63 @@ function applyFilter() {
   renderList();
 }
 
-function renderTopicChips() {
-  const counts = { 全部: state.posts.length };
-  state.posts.forEach((p) => { counts[p.topic] = (counts[p.topic] || 0) + 1; });
+/* 客观特征标签：从数据确定性推导，任何账号都适用。
+   爆款/高收藏按库内分位数（前 10%），样本 ≥20 条才启用。 */
+const TAG_DEFS = [
+  ["🔥 爆款", (p, ctx) => ctx.likesP90 > 0 && p.metrics.likes >= ctx.likesP90],
+  ["⭐ 高收藏", (p, ctx) => ctx.bmP90 > 0 && p.metrics.bookmarks >= ctx.bmP90],
+  ["📜 长推", (p) => p.text.length > 300],
+  ["📋 清单体", (p) => /(^|\n)\s*(?:[1１][、.．)）]|1️⃣)/.test(p.text)],
+  ["❓ 提问式", (p) => /[？?]/.test(p.text.split("\n")[0]) || /[？?]\s*$/.test(p.text)],
+  ["💬 金句", (p) => p.text.length <= 60],
+];
+
+function computeTags() {
+  const withLikes = state.posts.filter((p) => p.metrics && p.metrics.likes > 0);
+  const pct = (values, q) => { const s = [...values].sort((a, b) => a - b); return s[Math.floor(s.length * q)]; };
+  const ctx = {
+    likesP90: withLikes.length >= 20 ? pct(withLikes.map((p) => p.metrics.likes), 0.9) : 0,
+    bmP90: withLikes.length >= 20 ? pct(withLikes.map((p) => p.metrics.bookmarks), 0.9) : 0,
+  };
+  state.posts.forEach((p) => {
+    p.tags = TAG_DEFS.filter(([, match]) => match(p, ctx)).map(([name]) => name);
+  });
+}
+
+function renderChips() {
   const wrap = $("topic-chips");
   wrap.innerHTML = "";
-  Object.entries(counts).forEach(([topic, n]) => {
+  const mk = (label, count, active, onclick) => {
     const b = document.createElement("button");
-    b.className = "chip" + (topic === state.topic ? " active" : "");
-    b.innerHTML = `${topic}<em>${n}</em>`;
-    b.onclick = () => { state.topic = topic; renderTopicChips(); applyFilter(); };
+    b.className = "chip" + (active ? " active" : "");
+    b.innerHTML = `${label}<em>${count}</em>`;
+    b.onclick = onclick;
     wrap.appendChild(b);
-  });
+  };
+  const pick = (kind, v) => () => { state.chip = { kind, v }; renderChips(); applyFilter(); };
+  mk("全部", state.posts.length, state.chip.kind === "all", pick("all", ""));
+  const topicCounts = {};
+  state.posts.forEach((p) => { if (p.topic && p.topic !== "未分类") topicCounts[p.topic] = (topicCounts[p.topic] || 0) + 1; });
+  Object.entries(topicCounts).forEach(([t, n]) => mk(t, n, state.chip.kind === "topic" && state.chip.v === t, pick("topic", t)));
+  const tagCounts = {};
+  state.posts.forEach((p) => (p.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+  TAG_DEFS.forEach(([name]) => { if (tagCounts[name]) mk(name, tagCounts[name], state.chip.kind === "tag" && state.chip.v === name, pick("tag", name)); });
+}
+
+function renderMonthOptions() {
+  const sel = $("month-filter");
+  const months = [...new Set(state.posts.map((p) => p.date.slice(0, 7)))].sort().reverse();
+  sel.innerHTML = '<option value="">全部时间</option>' +
+    months.map((m) => `<option value="${m}">${Number(m.slice(0, 4))}年${Number(m.slice(5))}月</option>`).join("");
+  sel.value = months.includes(state.month) ? state.month : "";
+  state.month = sel.value;
+}
+
+function refreshLibrary() {
+  computeTags();
+  renderChips();
+  renderMonthOptions();
+  applyFilter();
 }
 
 function renderList() {
@@ -148,8 +196,9 @@ function renderList() {
   state.filtered.slice(0, LIST_CAP).forEach((p) => {
     const li = document.createElement("li");
     li.className = "post-item" + (state.selected && state.selected.id === p.id ? " active" : "");
+    const label = p.topic && p.topic !== "未分类" ? p.topic : ((p.tags && p.tags[0]) || "");
     li.innerHTML = `
-      <div class="pi-meta"><span>${p.date} · ${p.topic}</span><span>❤ ${fmtNum(p.metrics.likes)}</span></div>
+      <div class="pi-meta"><span>${p.date}${label ? " · " + label : ""}</span><span>❤ ${fmtNum(p.metrics.likes)}</span></div>
       <div class="pi-text"></div>`;
     li.querySelector(".pi-text").textContent = p.text;
     li.onclick = () => selectPost(p);
@@ -488,9 +537,9 @@ async function xSync() {
       }
     } catch { /* 头像拉不到就让用户手动传 */ }
 
-    state.topic = "全部";
-    renderTopicChips();
-    applyFilter();
+    state.chip = { kind: "all", v: "" };
+    state.month = "";
+    refreshLibrary();
     $("tab-library").click();
     selectPost(state.posts[0]);
     status.textContent = rateLimited
@@ -636,6 +685,7 @@ function bind() {
   });
 
   $("search").oninput = (e) => { state.search = e.target.value; applyFilter(); };
+  $("month-filter").onchange = (e) => { state.month = e.target.value; applyFilter(); };
   $("random-btn").onclick = randomPost;
   $("custom-text").oninput = (e) => { state.customText = e.target.value; renderCard(); };
   $("card-scale").oninput = (e) => { state.cardScale = Number(e.target.value); $("scale-val").textContent = state.cardScale + "%"; applyCardTransform(); };
@@ -709,9 +759,9 @@ function bind() {
         state.posts = posts;
         try { localStorage.setItem(POSTS_KEY, JSON.stringify(posts)); }
         catch { alert("推文库太大，无法保存到本机，仅本次会话有效。想永久使用请把文件存为项目里的 posts.json"); }
-        state.topic = "全部";
-        renderTopicChips();
-        applyFilter();
+        state.chip = { kind: "all", v: "" };
+        state.month = "";
+        refreshLibrary();
         selectPost(state.posts[0]);
       } catch (err) {
         alert("导入失败：" + err.message + "\n格式见 README：[{\"date\":\"2026-01-01\",\"text\":\"...\"}]");
@@ -758,8 +808,7 @@ async function loadPosts() {
 async function init() {
   await loadProfile();
   state.posts = await loadPosts();
-  renderTopicChips();
-  applyFilter();
+  refreshLibrary();
   bind();
   initDrag();
   loadBackgrounds();
