@@ -220,7 +220,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tc-handle { color: #536471; font-size: 13.5px; margin-top: 1px; }
 .tc-x-brand { display: flex; align-items: center; align-self: flex-start; color: #0f1419; }
 .tc-x-logo { width: 20px; height: 20px; }
-.tc-x-com { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; margin-left: 1px; }
 
 .tc-body {
   margin-top: 14px; font-size: 17px; line-height: 1.62;
