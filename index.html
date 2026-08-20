@@ -151,6 +151,16 @@
         <p class="mini-label">Key 只存你的浏览器本地；请求经 tools.upthos.com 无状态转发，不记录、不存储。X API 按量计费约 $0.005/条（同步 300 条 ≈ $1.5，需先在 Console 充值）；同一账号再次同步自动增量。</p>
       </section>
 
+      <section class="control-section">
+        <div class="section-heading"><span>07</span><div><h2>交给 AI Agent</h2><p>把下面这段整个发给 Claude Code / Codex，它就能直接出图</p></div></div>
+        <textarea class="text-input agent-prompt" id="agent-prompt" rows="8" readonly></textarea>
+        <div class="chip-row">
+          <button class="chip" id="copy-agent">复制这段指令</button>
+          <a class="chip" href="llms.txt" target="_blank" rel="noopener">完整参数文档 ↗</a>
+        </div>
+        <p class="mini-label">指令里的链接已包含你当前调好的全部设置，改样式后重新复制即可。需要你的 Agent 有浏览器能力（浏览器 MCP / Playwright / computer-use 都行）；图片在 Agent 本机生成，不经过任何服务器。</p>
+      </section>
+
     </aside>
 
     <section class="preview-panel">
