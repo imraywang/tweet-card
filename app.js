@@ -359,6 +359,146 @@ async function exportPng() {
   }
 }
 
+/* ---------- BYOK：用用户自己的 X API Key 同步推文 ----------
+   Key 只存 localStorage；浏览器无法直连 api.x.com（无 CORS 头），
+   请求经 tools.upthos.com 的无状态转发（Pages Function，不记录不存储）。 */
+
+const X_PROXY = "https://tools.upthos.com/api/x/";
+const XKEY_KEY = "tcs-xkey";
+const XSYNC_KEY = "tcs-xsync"; // { handle, newestId }
+
+async function xApi(path, params, token) {
+  const qs = new URLSearchParams(params).toString();
+  const r = await fetch(X_PROXY + path + (qs ? "?" + qs : ""), {
+    headers: { Authorization: "Bearer " + token },
+  });
+  if (r.status === 401) throw new Error("Key 无效或无权限（401）");
+  if (r.status === 403) throw new Error("你的套餐无此端点权限（403）");
+  if (r.status === 429) throw new Error("RATE_LIMIT");
+  if (!r.ok) throw new Error("X API 错误 " + r.status);
+  return r.json();
+}
+
+/* 清洗 API 返回：长推取全文，t.co 换成可读链接，媒体链接删除（与 build_posts.py 同逻辑） */
+function cleanApiText(p) {
+  const note = p.note_tweet || {};
+  let text = note.text || p.text || "";
+  const urls = [...((p.entities || {}).urls || []), ...((note.entities || {}).urls || [])];
+  for (const u of urls) {
+    if (!u.url) continue;
+    const expanded = u.expanded_url || "", display = u.display_url || "";
+    if (expanded.includes("/photo/") || expanded.includes("/video/") || display.startsWith("pic.x.com") || display.startsWith("pic.twitter.com")) {
+      text = text.replaceAll(u.url, "");
+    } else {
+      text = text.replaceAll(u.url, display);
+    }
+  }
+  text = text.replace(/https:\/\/t\.co\/\w+/g, "");
+  return text.split("\n").map((l) => l.replace(/\s+$/, "")).join("\n").trim();
+}
+
+function apiToPost(p, handle) {
+  const d = new Date(p.created_at);
+  const pm = p.public_metrics || {};
+  return {
+    id: p.id,
+    date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    datetime: "",
+    text: cleanApiText(p),
+    long: !!p.note_tweet,
+    sourceUrl: `https://x.com/${handle}/status/${p.id}`,
+    topic: "未分类",
+    metrics: {
+      likes: pm.like_count || 0,
+      replies: pm.reply_count || 0,
+      reposts: (pm.retweet_count || 0) + (pm.quote_count || 0),
+      bookmarks: pm.bookmark_count || 0,
+      views: pm.impression_count || 0,
+    },
+  };
+}
+
+async function xSync() {
+  const btn = $("x-sync"), status = $("x-status");
+  const token = $("x-token").value.trim();
+  const handle = $("x-handle").value.trim().replace(/^@+/, "");
+  const limit = Number($("x-limit").value);
+  if (!token) { status.textContent = "请先填 Bearer Token"; return; }
+  if (!handle) { status.textContent = "请填用户名"; return; }
+
+  btn.disabled = true;
+  const collected = [];
+  try {
+    localStorage.setItem(XKEY_KEY, token);
+
+    status.textContent = "查询用户…";
+    const ur = await xApi("2/users/by/username/" + handle, { "user.fields": "profile_image_url,verified,verified_type" }, token);
+    if (!ur.data) throw new Error("找不到用户 @" + handle);
+    const user = ur.data;
+
+    let sync = null;
+    try { sync = JSON.parse(localStorage.getItem(XSYNC_KEY) || "null"); } catch { /* 忽略 */ }
+    const incremental = sync && sync.handle === handle && sync.newestId;
+
+    const base = {
+      max_results: "100",
+      exclude: "replies,retweets",
+      "tweet.fields": "created_at,public_metrics,note_tweet,entities",
+    };
+    if (incremental) base.since_id = sync.newestId;
+
+    let nextToken = null, rateLimited = false;
+    while (collected.length < limit) {
+      status.textContent = `拉取中… 已 ${collected.length} 条`;
+      const params = { ...base };
+      if (nextToken) params.pagination_token = nextToken;
+      let page;
+      try {
+        page = await xApi(`2/users/${user.id}/tweets`, params, token);
+      } catch (e) {
+        if (e.message === "RATE_LIMIT" && collected.length) { rateLimited = true; break; }
+        throw e;
+      }
+      (page.data || []).forEach((p) => collected.push(apiToPost(p, handle)));
+      nextToken = page.meta && page.meta.next_token;
+      if (!nextToken) break;
+    }
+
+    const merged = new Map();
+    if (incremental) state.posts.forEach((p) => merged.set(p.id, p));
+    collected.forEach((p) => { if (p.text) merged.set(p.id, p); });
+    if (!merged.size) throw new Error(incremental ? "没有新推文" : "没拉到任何推文");
+    state.posts = [...merged.values()].sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1));
+
+    localStorage.setItem(XSYNC_KEY, JSON.stringify({ handle, newestId: state.posts[0].id }));
+    try { localStorage.setItem(POSTS_KEY, JSON.stringify(state.posts)); }
+    catch { alert("推文库太大无法保存到本机，仅本次会话有效。可让 Claude 把它写入 posts.json 持久化。"); }
+
+    saveProfileOverride({ name: user.name, handle: user.username, verified: !!(user.verified || user.verified_type === "blue") });
+    try {
+      const av = await fetch(user.profile_image_url.replace("_normal", "_400x400"));
+      if (av.ok) {
+        const blob = await av.blob();
+        const dataUrl = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+        saveProfileOverride({ avatarData: dataUrl });
+      }
+    } catch { /* 头像拉不到就让用户手动传 */ }
+
+    state.topic = "全部";
+    renderTopicChips();
+    applyFilter();
+    $("tab-library").click();
+    selectPost(state.posts[0]);
+    status.textContent = rateLimited
+      ? `已同步 ${collected.length} 条后触发频控，15 分钟后可再拉`
+      : `完成：新增 ${collected.length} 条，库内共 ${state.posts.length} 条`;
+  } catch (err) {
+    status.textContent = err.message === "RATE_LIMIT" ? "触发 X API 频控（429），请 15 分钟后再试" : "失败：" + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 /* ---------- 导出 Live 图（3 秒动效 MP4，WebCodecs 编码） ----------
    背景缓慢推近 + 卡片轻微呼吸上浮，文字保持静止清晰。
    手机端用 intoLive / 快捷指令把 MP4 转成实况照片后即可按 Live 图发布。 */
@@ -579,7 +719,18 @@ function bind() {
   $("profile-reset").onclick = () => {
     localStorage.removeItem(PROFILE_KEY);
     localStorage.removeItem(POSTS_KEY);
+    localStorage.removeItem(XSYNC_KEY);
     location.reload();
+  };
+
+  /* ---- X API 同步（BYOK） ---- */
+  $("x-token").value = localStorage.getItem(XKEY_KEY) || "";
+  if (state.profile.handle && state.profile.handle !== DEFAULT_PROFILE.handle) $("x-handle").value = state.profile.handle;
+  $("x-sync").onclick = xSync;
+  $("x-clear").onclick = () => {
+    localStorage.removeItem(XKEY_KEY);
+    $("x-token").value = "";
+    $("x-status").textContent = "已清除本机保存的 Key";
   };
 }
 
