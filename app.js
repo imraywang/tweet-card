@@ -32,6 +32,8 @@ const state = {
   sort: "new",           // new | hot | saved
   bg: null,              // 当前背景的 URL / dataURL
   fakeMetrics: null,     // 卡片上显示的随机互动数据
+  dateOverride: "",      // URL 参数指定的日期
+  backgrounds: [],       // manifest 内容，供 bg 参数解析
 };
 
 const LIST_CAP = 200;
@@ -61,14 +63,16 @@ function todayISO() {
 const PROFILE_KEY = "tcs-profile";
 const POSTS_KEY = "tcs-posts";
 
-async function loadProfile() {
+async function loadProfile(useLocalOverride = true) {
   try {
     const base = await fetch("profile.json").then((r) => (r.ok ? r.json() : {}));
     Object.assign(state.profile, base);
   } catch { /* 没有 profile.json 就用内置默认 */ }
-  try {
-    Object.assign(state.profile, JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
-  } catch { /* 本机覆盖损坏则忽略 */ }
+  if (useLocalOverride) {
+    try {
+      Object.assign(state.profile, JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
+    } catch { /* 本机覆盖损坏则忽略 */ }
+  }
   applyProfile();
 }
 
@@ -264,7 +268,7 @@ function renderBody(text) {
 function renderCard() {
   const isCustom = state.tab === "custom";
   const text = isCustom ? (state.customText || "写点什么……") : (state.selected ? state.selected.text : "");
-  const date = isCustom ? todayISO() : (state.selected ? state.selected.date : todayISO());
+  const date = state.dateOverride || (isCustom ? todayISO() : (state.selected ? state.selected.date : todayISO()));
 
   const body = $("tc-body");
   body.innerHTML = renderBody(text);
@@ -360,17 +364,18 @@ function initDrag() {
 
 /* ---------- 背景 ---------- */
 
-async function loadBackgrounds() {
-  const manifest = await fetch("backgrounds/manifest.json").then((r) => r.json());
+function renderBackgroundGrid() {
   const grid = $("bg-grid");
-  manifest.forEach((item, i) => {
+  state.backgrounds.forEach((item, i) => {
     const btn = document.createElement("button");
     btn.className = "bg-thumb";
     btn.title = item.name;
     btn.innerHTML = `<img src="backgrounds/${item.file}" alt="${item.name}" />`;
     btn.onclick = () => setBg("backgrounds/" + item.file, btn);
     grid.appendChild(btn);
-    if (i === 0) setBg("backgrounds/" + item.file, btn);
+    // 已由 URL 参数指定背景时不要覆盖
+    if (state.bg === "backgrounds/" + item.file) btn.classList.add("active");
+    else if (i === 0 && !state.bg) setBg("backgrounds/" + item.file, btn);
   });
 }
 
@@ -464,25 +469,32 @@ async function captureCardCanvas(pixelRatio) {
 /* 竖图成品：canvas 手动合成——背景直接 drawImage，不经 foreignObject
    （iOS Safari 对 foreignObject 里的 <img> 渲染不可靠，会导致背景整片变黑）。与 Live 视频同一条管线。 */
 async function composePoster() {
-  const W = 1080, H = state.mode === "tall" ? 1920 : 1440;
-  const card = $("tweet-card");
-  const cardCanvas = await captureCardCanvas(2);
-  const s = (state.fitScale * state.cardScale) / 100;
-  const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
-  const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
-  const bg = new Image();
-  await new Promise((res, rej) => { bg.onload = res; bg.onerror = rej; bg.src = state.bg; });
-  const cv = document.createElement("canvas");
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext("2d");
-  drawCover(ctx, bg, W, H, 1);
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.35)";
-  ctx.shadowBlur = 40;
-  ctx.shadowOffsetY = 10;
-  ctx.drawImage(cardCanvas, cx - cw / 2, cy - ch / 2, cw, ch);
-  ctx.restore();
-  return cv;
+  const stage = $("stage");
+  const prevZoom = stage.style.zoom;
+  stage.style.zoom = "1"; // 还原 1:1 布局再测量与捕获，避免移动端缩放影响尺寸计算
+  try {
+    const W = 1080, H = state.mode === "tall" ? 1920 : 1440;
+    const card = $("tweet-card");
+    const cardCanvas = await captureCardCanvas(2);
+    const s = (state.fitScale * state.cardScale) / 100;
+    const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
+    const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
+    const bg = new Image();
+    await new Promise((res, rej) => { bg.onload = res; bg.onerror = rej; bg.src = state.bg; });
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    drawCover(ctx, bg, W, H, 1);
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 10;
+    ctx.drawImage(cardCanvas, cx - cw / 2, cy - ch / 2, cw, ch);
+    ctx.restore();
+    return cv;
+  } finally {
+    stage.style.zoom = prevZoom;
+  }
 }
 
 async function exportPng() {
@@ -818,6 +830,12 @@ function bind() {
 
   $("shuffle-metrics").onclick = () => { rollMetrics(); renderCard(); };
 
+  $("copy-link").onclick = async () => {
+    await navigator.clipboard.writeText(buildShareUrl(false));
+    $("copy-link").textContent = "已复制 ✓";
+    setTimeout(() => ($("copy-link").textContent = "复制链接"), 1200);
+  };
+
   $("guides-toggle").onclick = () => {
     state.guidesOn = !state.guidesOn;
     $("guides-toggle").textContent = state.guidesOn ? "安全区 ✓" : "安全区";
@@ -901,16 +919,140 @@ async function loadPosts() {
   return [];
 }
 
+/* ---------- URL 参数 / Agent 接口 ----------
+   任何带浏览器能力的 Agent 都可以：打开 ?embed=1&text=...，等待
+   document.documentElement.dataset.ready === "1"，再读 window.__cardDataUrl。 */
+
+const clampNum = (v, lo, hi, dflt) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
+};
+
+function blobToDataUrl(blob) {
+  return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+}
+
+/* 外部图片先取回转 dataURL，避免 canvas 被跨域污染导致导出失败 */
+async function fetchAsDataUrl(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return await blobToDataUrl(await r.blob());
+  } catch { return null; }
+}
+
+async function resolveBgParam(v) {
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return await fetchAsDataUrl(v);
+  const hit = state.backgrounds.find((b) => b.file === v || b.file.replace(/\.(jpg|jpeg|png|svg)$/, "") === v || b.name === v);
+  return hit ? "backgrounds/" + hit.file : null;
+}
+
+async function applyUrlParams() {
+  const q = new URLSearchParams(location.search);
+  if (![...q.keys()].length) return false;
+
+  if (q.get("name")) state.profile.name = q.get("name");
+  if (q.get("handle")) state.profile.handle = q.get("handle").replace(/^@+/, "");
+  if (q.has("verified")) state.profile.verified = q.get("verified") !== "0";
+  if (q.get("avatar")) {
+    const data = await fetchAsDataUrl(q.get("avatar"));
+    if (data) state.profile.avatarData = data;
+  }
+  applyProfile();
+
+  if (q.get("text")) { state.tab = "custom"; state.customText = q.get("text"); }
+  if (q.get("date")) state.dateOverride = q.get("date");
+
+  const mode = q.get("mode");
+  if (["poster", "tall", "card"].includes(mode)) state.mode = mode;
+  if (q.get("theme") === "dark") state.theme = "dark";
+  if (q.has("scale")) state.cardScale = clampNum(q.get("scale"), 50, 140, state.cardScale);
+  if (q.has("opacity")) state.cardOpacity = clampNum(q.get("opacity"), 30, 100, state.cardOpacity);
+  if (q.has("x")) state.cardX = clampNum(q.get("x"), -400, 400, 0);
+  if (q.has("y")) state.cardY = clampNum(q.get("y"), -600, 600, 0);
+  if (q.get("guides") === "0") state.guidesOn = false;
+
+  if (q.get("metrics") === "off") state.metricsOn = false;
+  const MET = ["likes", "reposts", "replies", "bookmarks", "views"];
+  if (MET.some((k) => q.has(k))) {
+    MET.forEach((k) => { if (q.has(k)) state.fakeMetrics[k] = clampNum(q.get(k), 0, 1e9, state.fakeMetrics[k]); });
+  }
+
+  const bg = await resolveBgParam(q.get("bg"));
+  if (bg) { state.bg = bg; $("stage-bg").src = bg; }
+
+  return q.get("embed") === "1";
+}
+
+/* embed 模式：隐藏界面，只输出成品，把 base64 PNG 挂到 window.__cardDataUrl */
+async function runEmbed() {
+  document.body.style.opacity = "0"; // 保留布局（卡片才有尺寸可捕获）
+  try {
+    await document.fonts.ready.catch(() => {});
+    renderCard();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const cv = state.mode === "card" ? await captureCardCanvas(3) : await composePoster();
+    const dataUrl = cv.toDataURL("image/png");
+    window.__cardDataUrl = dataUrl;
+    window.__cardSize = { width: cv.width, height: cv.height };
+
+    document.body.classList.add("embed");
+    document.body.style.opacity = "";
+    const view = document.createElement("div");
+    view.id = "embed-view";
+    view.innerHTML = '<img id="embed-img" alt="tweet card" />';
+    document.body.appendChild(view);
+    $("embed-img").src = dataUrl;
+    document.documentElement.dataset.ready = "1";
+  } catch (err) {
+    document.body.style.opacity = "";
+    window.__cardError = String(err && err.message ? err.message : err);
+    document.documentElement.dataset.ready = "error";
+  }
+}
+
+function buildShareUrl(embed) {
+  const q = new URLSearchParams();
+  const text = state.tab === "custom" ? state.customText : (state.selected ? state.selected.text : "");
+  if (text) q.set("text", text);
+  if (state.profile.name !== DEFAULT_PROFILE.name) q.set("name", state.profile.name);
+  if (state.profile.handle !== DEFAULT_PROFILE.handle) q.set("handle", state.profile.handle);
+  if (!state.profile.verified) q.set("verified", "0");
+  if (state.mode !== "poster") q.set("mode", state.mode);
+  if (state.theme !== "light") q.set("theme", state.theme);
+  if (state.cardScale !== 92) q.set("scale", state.cardScale);
+  if (state.cardOpacity !== 100) q.set("opacity", state.cardOpacity);
+  if (state.cardX) q.set("x", Math.round(state.cardX));
+  if (state.cardY) q.set("y", Math.round(state.cardY));
+  if (!state.metricsOn) q.set("metrics", "off");
+  if (state.bg && state.bg.startsWith("backgrounds/")) q.set("bg", state.bg.replace("backgrounds/", "").replace(/\.(jpg|jpeg|png|svg)$/, ""));
+  if (embed) q.set("embed", "1");
+  return location.origin + location.pathname + "?" + q.toString();
+}
+
 async function init() {
-  await loadProfile();
+  const q = new URLSearchParams(location.search);
+  // embed 模式忽略本机 localStorage（保留 profile.json 默认身份），
+  // 保证同一条链接在任何设备上结果一致
+  await loadProfile(q.get("embed") !== "1");
+
   state.posts = await loadPosts();
+  try { state.backgrounds = await fetch("backgrounds/manifest.json").then((r) => r.json()); } catch { state.backgrounds = []; }
+  rollMetrics();
+
+  const embed = await applyUrlParams();
+
   refreshLibrary();
   bind();
   initDrag();
-  loadBackgrounds();
+  renderBackgroundGrid();
   fitStageScale();
   window.addEventListener("resize", fitStageScale);
-  if (state.posts.length) selectPost(state.posts[0]);
+  if (state.tab === "custom") { $("custom-text").value = state.customText; $("tab-custom").click(); }
+  else if (state.posts.length) selectPost(state.posts[0]);
+
+  if (embed) runEmbed();
 }
 
 init();
