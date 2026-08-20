@@ -424,6 +424,10 @@ async function xSync() {
   const handle = $("x-handle").value.trim().replace(/^@+/, "");
   const limit = Number($("x-limit").value);
   if (!token) { status.textContent = "请先填 Bearer Token"; return; }
+  if (!token.startsWith("AA") || token.length < 60) {
+    status.textContent = "这不像 Bearer Token（应为 AAAA 开头的 100+ 位长字符串）。API Key / Secret 不能用，请到 Keys and tokens 页复制 Bearer Token";
+    return;
+  }
   if (!handle) { status.textContent = "请填用户名"; return; }
 
   btn.disabled = true;

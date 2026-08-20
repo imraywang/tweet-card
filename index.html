@@ -125,7 +125,8 @@
 
       <section class="control-section">
         <div class="section-heading"><span>06</span><div><h2>用 X API 同步推文</h2><p>用你自己的 API Key（BYOK），头像昵称自动填好</p></div></div>
-        <input class="text-input" id="x-token" type="password" placeholder="X API Bearer Token" autocomplete="off" />
+        <input class="text-input" id="x-token" type="password" placeholder="Bearer Token（AAAA 开头的长字符串）" autocomplete="off" />
+        <p class="mini-label">新建 App 会给三种凭证，这里<strong>只用 Bearer Token</strong>：Developer Portal → 你的 App → Keys and tokens → Bearer Token（丢了点 Regenerate 重新生成）。API Key 和 API Key Secret 本工具用不到，也不要粘贴到任何网页。</p>
         <div class="option-grid">
           <div class="option">
             <span class="mini-label">用户名（不带 @）</span>
