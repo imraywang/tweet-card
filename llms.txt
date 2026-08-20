@@ -1,0 +1,86 @@
+# 推文卡片工场 Tweet Card Studio
+
+> 把一段文字渲染成推特(X)风格的卡片图片，叠加背景，输出可直接发布的竖图 PNG。
+> 本页面支持 URL 参数驱动，可由 AI Agent 直接调用。
+
+## 推文卡片生成器 (Tweet Card Generator)
+
+把一段文字渲染成推特(X)风格的卡片图片，叠加背景，输出可直接发布到抖音/小红书的竖图 PNG。
+全部在浏览器本地渲染，无需 API Key，无服务端调用。
+
+页面: 本项目 index.html（官方部署：https://tools.upthos.com/tweet-card）
+
+### Agent 调用方式
+
+用浏览器能力（Playwright / Puppeteer / 浏览器 MCP / computer-use 均可）执行三步：
+
+1. 打开 `<你的部署地址>/tweet-card?embed=1&text=<文字>&bg=<背景>&mode=<尺寸>`
+   （`embed=1` 会隐藏所有界面，只渲染成品）
+2. 等待 `document.documentElement.dataset.ready === "1"`（失败时为 `"error"`，原因在 `window.__cardError`）
+3. 读取 `window.__cardDataUrl` —— 一个 `data:image/png;base64,...` 字符串，即成品图；
+   尺寸在 `window.__cardSize`（`{width, height}`）。把 base64 解码写入文件即可。
+
+也可以直接对页面截图，`embed=1` 下页面内容只有成品图本身。
+
+示例（Playwright / Node）:
+
+```js
+await page.goto('<你的部署地址>/tweet-card?embed=1&text=' + encodeURIComponent('这是一条推文') + '&bg=photo-forest-path&mode=tall');
+await page.waitForFunction(() => document.documentElement.dataset.ready);
+const dataUrl = await page.evaluate(() => window.__cardDataUrl);
+require('fs').writeFileSync('card.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
+```
+
+### URL 参数
+
+内容
+- `text` — 卡片正文，必填。支持换行（`\n`），URL 编码。链接/@提及/#话题会自动渲染成蓝色
+- `date` — 卡片显示的日期，格式 `2026-08-20`，默认今天
+
+身份
+- `name` — 显示名称，默认「你的名字」
+- `handle` — 用户名，不带 @，默认 `yourname`
+- `verified` — `0` 关闭蓝色认证徽章，默认开启
+- `avatar` — 头像图片 URL（需允许跨域访问，取不到时回退为默认头像）
+
+尺寸与样式
+- `mode` — `poster`(3:4, 1080×1440, 默认) | `tall`(9:16, 1080×1920) | `card`(纯卡片，透明背景 PNG)
+- `theme` — `light`(默认) | `dark`
+- `scale` — 卡片整体大小，50–140，默认 92
+- `opacity` — 卡片不透明度，30–100，默认 100
+- `x` / `y` — 卡片相对画面中心的偏移像素，可为负
+
+背景
+- `bg` — 内置背景的 slug，或任意图片 URL（需允许跨域访问）
+
+  内置照片: `photo-misty-marsh` `photo-forest-coast` `photo-pebble-beach` `photo-rocky-bay`
+  `photo-snow-peaks` `photo-dusk-forest` `photo-flower-dusk` `photo-golden-field`
+  `photo-desert-dusk` `photo-forest-path` `photo-lighthouse` `photo-white-town`
+  `photo-canal-town` `photo-city-bridge-night` `photo-london-night` `photo-foggy-street`
+  `photo-far-city-lights` `photo-city-rooftops` `photo-city-crosswalk` `photo-old-town-door`
+  `photo-concrete-block` `photo-vintage-cars` `photo-cafe-silhouette`
+
+  内置渐变: `ink-dawn` `deep-forest` `ember` `harbor` `violet-night`
+  `slate` `plum-smoke` `midnight` `paper-warm` `mist`
+
+互动数据（卡片底部的回复/转发/点赞/收藏/浏览数字，默认随机生成）
+- `metrics=off` — 完全隐藏这一行
+- `likes` / `reposts` / `replies` / `bookmarks` / `views` — 指定具体数字
+
+其他
+- `embed` — `1` 进入无界面渲染模式（Agent 用这个）
+- `guides` — `0` 关闭抖音安全区参考线（参考线本来就不会进成品，仅影响预览）
+
+### 完整示例
+
+深色卡片 + 城市夜景 + 9:16 + 指定数据:
+
+```
+<你的部署地址>/tweet-card?embed=1&text=%E8%AF%B4%E4%B8%AA%E6%9A%B4%E8%AE%BA&name=Ray%20Wang&handle=wangray&mode=tall&theme=dark&bg=photo-london-night&likes=5309&views=160000
+```
+
+### 说明
+
+- 卡片上的互动数据默认是随机生成的，不代表真实数据
+- 生成的图片包含推特风格界面，请自行确认使用场景合规
+- 开源代码: https://github.com/imraywang/tweet-card

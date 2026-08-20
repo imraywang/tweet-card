@@ -123,6 +123,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   font-size: 13px; font-family: inherit; outline: none; background: var(--bg); width: 100%;
 }
 .text-input:focus { border-color: #9aa2b1; background: #fff; }
+.agent-prompt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.55; resize: vertical; }
 .file-chip { display: inline-flex; align-items: center; }
 #bg-url {
   flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;

@@ -317,6 +317,9 @@ function renderCard() {
   $("guides-toggle").style.display = isFrame ? "" : "none";
   $("live-btn").style.display = isFrame ? "" : "none";
 
+  const promptBox = $("agent-prompt");
+  if (promptBox) promptBox.value = buildAgentPrompt();
+
   // 竖图模式：卡片浮动（整体缩放 + 可拖动）；长文先自动缩到画框内，再叠加用户缩放
   card.classList.toggle("floating", isFrame);
   if (isFrame) {
@@ -836,6 +839,12 @@ function bind() {
     setTimeout(() => ($("copy-link").textContent = "复制链接"), 1200);
   };
 
+  $("copy-agent").onclick = async () => {
+    await navigator.clipboard.writeText($("agent-prompt").value);
+    $("copy-agent").textContent = "已复制 ✓";
+    setTimeout(() => ($("copy-agent").textContent = "复制这段指令"), 1400);
+  };
+
   $("guides-toggle").onclick = () => {
     state.guidesOn = !state.guidesOn;
     $("guides-toggle").textContent = state.guidesOn ? "安全区 ✓" : "安全区";
@@ -1012,6 +1021,24 @@ async function runEmbed() {
   }
 }
 
+/* 生成一段可以整个发给 AI Agent 的指令 */
+function buildAgentPrompt() {
+  return [
+    "帮我用这个网页工具生成一张推文卡片图片，步骤：",
+    "",
+    "1. 用浏览器打开下面这个链接（已包含我调好的全部样式）：",
+    buildShareUrl(true),
+    "",
+    '2. 等待页面上 document.documentElement.dataset.ready 变成 "1"',
+    '   （如果变成 "error"，失败原因在 window.__cardError）',
+    "",
+    "3. 读取 window.__cardDataUrl，它是 data:image/png;base64,... 格式，",
+    "   把逗号后面的 base64 解码保存为 PNG 文件即可。尺寸见 window.__cardSize。",
+    "",
+    "要换文案或样式，改链接里的参数就行，完整参数说明：" + location.origin + "/llms.txt",
+  ].join("\n");
+}
+
 function buildShareUrl(embed) {
   const q = new URLSearchParams();
   const text = state.tab === "custom" ? state.customText : (state.selected ? state.selected.text : "");
@@ -1021,10 +1048,11 @@ function buildShareUrl(embed) {
   if (!state.profile.verified) q.set("verified", "0");
   if (state.mode !== "poster") q.set("mode", state.mode);
   if (state.theme !== "light") q.set("theme", state.theme);
+  // 与初始默认值一致的项不写进链接，保持简短（省略时页面会用同样的默认值）
   if (state.cardScale !== 92) q.set("scale", state.cardScale);
   if (state.cardOpacity !== 100) q.set("opacity", state.cardOpacity);
-  if (state.cardX) q.set("x", Math.round(state.cardX));
-  if (state.cardY) q.set("y", Math.round(state.cardY));
+  if (Math.round(state.cardX) !== -20) q.set("x", Math.round(state.cardX));
+  if (Math.round(state.cardY) !== -37) q.set("y", Math.round(state.cardY));
   if (!state.metricsOn) q.set("metrics", "off");
   if (state.bg && state.bg.startsWith("backgrounds/")) q.set("bg", state.bg.replace("backgrounds/", "").replace(/\.(jpg|jpeg|png|svg)$/, ""));
   if (embed) q.set("embed", "1");
