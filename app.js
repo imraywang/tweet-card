@@ -446,27 +446,58 @@ function showExportSheet(blob, filename, hint) {
 
 /* ---------- 导出 ---------- */
 
+/* 卡片单独光栅化：临时摘掉浮动定位与 transform（作为根节点捕获时这些样式会被克隆进画布导致位移裁切） */
+async function captureCardCanvas(pixelRatio) {
+  const card = $("tweet-card");
+  const hadFloating = card.classList.contains("floating");
+  const prevTransform = card.style.transform;
+  card.classList.remove("floating");
+  card.style.transform = "none";
+  try {
+    return await htmlToImage.toCanvas(card, { pixelRatio });
+  } finally {
+    if (hadFloating) card.classList.add("floating");
+    card.style.transform = prevTransform;
+  }
+}
+
+/* 竖图成品：canvas 手动合成——背景直接 drawImage，不经 foreignObject
+   （iOS Safari 对 foreignObject 里的 <img> 渲染不可靠，会导致背景整片变黑）。与 Live 视频同一条管线。 */
+async function composePoster() {
+  const W = 1080, H = state.mode === "tall" ? 1920 : 1440;
+  const card = $("tweet-card");
+  const cardCanvas = await captureCardCanvas(2);
+  const s = (state.fitScale * state.cardScale) / 100;
+  const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
+  const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
+  const bg = new Image();
+  await new Promise((res, rej) => { bg.onload = res; bg.onerror = rej; bg.src = state.bg; });
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  drawCover(ctx, bg, W, H, 1);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.35)";
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 10;
+  ctx.drawImage(cardCanvas, cx - cw / 2, cy - ch / 2, cw, ch);
+  ctx.restore();
+  return cv;
+}
+
 async function exportPng() {
   const btn = $("export-btn");
   btn.disabled = true;
   btn.textContent = "生成中…";
   try {
-    const stage = $("stage");
-    const pixelRatio = state.mode === "card" ? 3 : 2; // 竖图 540x720 → 1080x1440
-    // 导出前临时还原移动端缩放：以 stage 为根节点捕获时 zoom/transform 会导致内容缩小、四周填充黑边
-    const prevZoom = stage.style.zoom, prevTransform = stage.style.transform;
-    stage.style.zoom = "1";
-    stage.style.transform = "none";
     let blob;
-    try {
-      blob = await htmlToImage.toBlob(stage, {
-        pixelRatio,
-        backgroundColor: state.mode === "card" ? undefined : "#000",
-        filter: (node) => node.id !== "safe-guides", // 参考线不进成品
-      });
-    } finally {
-      stage.style.zoom = prevZoom;
-      stage.style.transform = prevTransform;
+    if (state.mode === "card") {
+      // 纯卡片：透明背景，直接光栅化卡片
+      const cardCanvas = await captureCardCanvas(3);
+      blob = await new Promise((res) => cardCanvas.toBlob(res, "image/png"));
+    } else {
+      const cv = await composePoster();
+      blob = await new Promise((res) => cv.toBlob(res, "image/png"));
     }
     const tag = state.tab === "custom" ? "custom" : (state.selected ? state.selected.id : "empty");
     const name = `${state.profile.handle}-card-${(state.selected && state.tab !== "custom" ? state.selected.date : todayISO()).replaceAll("-", "")}-${tag}.png`;
@@ -654,19 +685,7 @@ async function exportLive() {
     // 卡片只光栅化一次，逐帧只做画布合成
     btn.textContent = "准备卡片…";
     const card = $("tweet-card");
-    // 捕获前临时摘掉浮动定位与 transform：以卡片为根节点光栅化时，
-    // absolute+left/top 50% 和 translate/scale 会被克隆进画布导致内容位移裁切
-    const hadFloating = card.classList.contains("floating");
-    const prevTransform = card.style.transform;
-    card.classList.remove("floating");
-    card.style.transform = "none";
-    let cardCanvas;
-    try {
-      cardCanvas = await htmlToImage.toCanvas(card, { pixelRatio: 2 });
-    } finally {
-      if (hadFloating) card.classList.add("floating");
-      card.style.transform = prevTransform;
-    }
+    const cardCanvas = await captureCardCanvas(2);
     const s = (state.fitScale * state.cardScale) / 100;
     const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
     const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
