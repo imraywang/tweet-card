@@ -252,13 +252,22 @@ const METRIC_ICONS = {
   views: '<svg viewBox="0 0 24 24"><path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z"/></svg>',
 };
 
+/* 正文渲染：链接 / @提及 / #话题 显示为 X 蓝，与真实推文一致 */
+function renderBody(text) {
+  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc
+    .replace(/(?:https?:\/\/)?(?:[\w-]+\.)+[a-z]{2,}(?:\/[^\s]*)?/gi, (m) => `<span class="tc-link">${m}</span>`)
+    .replace(/(^|[^\w@/])@([A-Za-z0-9_]{2,15})/g, '$1<span class="tc-link">@$2</span>')
+    .replace(/(^|[^&\w])#([\p{L}\p{N}_]+)/gu, '$1<span class="tc-link">#$2</span>');
+}
+
 function renderCard() {
   const isCustom = state.tab === "custom";
   const text = isCustom ? (state.customText || "写点什么……") : (state.selected ? state.selected.text : "");
   const date = isCustom ? todayISO() : (state.selected ? state.selected.date : todayISO());
 
   const body = $("tc-body");
-  body.textContent = text;
+  body.innerHTML = renderBody(text);
   body.className = "tc-body " + (text.length > 500 ? "size-xs" : text.length > 320 ? "size-s" : text.length > 170 ? "size-m" : "");
 
   $("tc-date").textContent = fmtDate(date);

@@ -215,7 +215,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tc-name { font-weight: 700; font-size: 15.5px; display: flex; align-items: center; gap: 4px; }
 .tc-badge { width: 17px; height: 17px; }
 .tc-handle { color: #536471; font-size: 13.5px; margin-top: 1px; }
-.tc-x-logo { width: 20px; height: 20px; color: #0f1419; align-self: flex-start; }
+.tc-x-brand { display: flex; align-items: center; align-self: flex-start; color: #0f1419; }
+.tc-x-logo { width: 20px; height: 20px; }
+.tc-x-com { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; margin-left: 1px; }
 
 .tc-body {
   margin-top: 14px; font-size: 17px; line-height: 1.62;
@@ -224,6 +226,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tc-body.size-m { font-size: 15px; line-height: 1.58; }
 .tc-body.size-s { font-size: 13px; line-height: 1.55; }
 .tc-body.size-xs { font-size: 11.5px; line-height: 1.5; }
+.tc-body .tc-link { color: #1d9bf0; }
 
 .tc-metrics {
   margin-top: 16px; padding-top: 12px; border-top: 1px solid #eff3f4;
@@ -237,7 +240,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 /* 黑色主题卡片 */
 .tweet-card.dark { background: #000; color: #e7e9ea; }
 .tweet-card.dark .tc-handle { color: #71767b; }
-.tweet-card.dark .tc-x-logo { color: #e7e9ea; }
+.tweet-card.dark .tc-x-brand { color: #e7e9ea; }
 .tweet-card.dark .tc-metrics { border-top-color: #2f3336; color: #71767b; }
 .tweet-card.dark .tc-metrics b { color: #e7e9ea; }
 
