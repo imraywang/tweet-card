@@ -134,20 +134,23 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .preview-topbar {
   display: flex; align-items: center; gap: 10px; padding: 12px 22px;
   border-bottom: 1px solid var(--line); background: var(--panel); font-size: 13px;
+  flex-wrap: wrap;
 }
 .preview-topbar .dot { width: 8px; height: 8px; border-radius: 50%; background: #f43f5e; }
-.preview-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.preview-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .preview-actions a { color: var(--muted); text-decoration: none; font-size: 12px; }
 .preview-actions a:hover { color: var(--text); }
 .ghost-btn {
   border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
   padding: 7px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  white-space: nowrap;
 }
 .ghost-btn:hover { background: var(--bg); }
 .ghost-btn.active { border-color: #fe2c55; color: #fe2c55; }
 .primary-btn {
   border: 0; background: var(--accent); color: #fff; border-radius: 8px;
   padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  white-space: nowrap;
 }
 .primary-btn:hover { opacity: 0.88; }
 .primary-btn:disabled { opacity: 0.5; cursor: wait; }
@@ -201,7 +204,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .stage .tweet-card.floating:active { cursor: grabbing; }
 .stage .tweet-card.floating.dragging { user-select: none; }
 
-.drag-hint { font-size: 12px; color: var(--muted); }
+.drag-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
 /* ---------- 推文卡片 ---------- */
 .tweet-card {
@@ -248,5 +251,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .workspace { grid-template-columns: 1fr; }
   .control-panel { height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .preview-panel { height: auto; }
-  .stage { transform: scale(0.72); transform-origin: top center; }
 }
+
+/* 导出交付面板（移动端）：iOS 对程序化下载常静默拦截，改走分享/长按保存 */
+.export-sheet { position: fixed; inset: 0; background: rgba(15, 20, 32, 0.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+.es-panel { background: var(--panel); border-radius: var(--radius); padding: 1rem; max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
+.es-preview { background: repeating-conic-gradient(#eceef1 0% 25%, #f8f9fa 0% 50%) 0 0 / 20px 20px; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; }
+.es-preview img, .es-preview video { max-width: 100%; max-height: 55vh; display: block; }
+.es-hint { font-size: 12px; color: var(--muted); text-align: center; }
+.es-actions { display: flex; gap: 8px; justify-content: center; }

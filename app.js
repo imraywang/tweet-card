@@ -346,9 +346,10 @@ function initDrag() {
   });
   card.addEventListener("pointermove", (e) => {
     if (!drag) return;
+    const z = Number(stage.style.zoom || 1) || 1; // 移动端 zoom 下指针位移要换算回画布坐标
     const limX = stage.clientWidth * 0.55, limY = stage.clientHeight * 0.55;
-    state.cardX = Math.max(-limX, Math.min(limX, drag.baseX + e.clientX - drag.x0));
-    state.cardY = Math.max(-limY, Math.min(limY, drag.baseY + e.clientY - drag.y0));
+    state.cardX = Math.max(-limX, Math.min(limX, drag.baseX + (e.clientX - drag.x0) / z));
+    state.cardY = Math.max(-limY, Math.min(limY, drag.baseY + (e.clientY - drag.y0) / z));
     applyCardTransform();
   });
   const end = () => { drag = null; card.classList.remove("dragging"); };
@@ -390,6 +391,59 @@ function addCustomThumb(dataUrl) {
   setBg(dataUrl, btn);
 }
 
+/* ---------- 移动端适配与成品交付 ---------- */
+
+/* stage 用 zoom 等比缩放适配窄屏：zoom 改变布局尺寸（不像 transform 会残留 540px 布局导致溢出错位）。导出前会临时还原。 */
+function fitStageScale() {
+  const wrap = document.querySelector(".stage-wrap");
+  const stage = $("stage");
+  stage.style.zoom = Math.min(1, (wrap.clientWidth - 24) / 540);
+}
+
+function isMobileLike() {
+  return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/* 桌面直接下载；移动端弹预览面板走系统分享（按钮点击是新的用户手势，不会像异步 a.click 那样被 iOS 拦截） */
+function deliverFile(blob, filename, hint) {
+  if (isMobileLike()) { showExportSheet(blob, filename, hint); return; }
+  const a = document.createElement("a");
+  a.download = filename;
+  a.href = URL.createObjectURL(blob);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+function showExportSheet(blob, filename, hint) {
+  const url = URL.createObjectURL(blob);
+  const isVideo = blob.type.startsWith("video/");
+  const sheet = document.createElement("div");
+  sheet.className = "export-sheet";
+  sheet.innerHTML = `
+    <div class="es-panel">
+      <div class="es-preview">${isVideo ? `<video src="${url}" autoplay muted loop playsinline></video>` : `<img src="${url}" alt="导出结果" />`}</div>
+      <p class="es-hint">${hint}</p>
+      <div class="es-actions">
+        <button class="primary-btn es-share">保存 / 分享</button>
+        <button class="ghost-btn es-close">关闭</button>
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.querySelector(".es-share").onclick = async () => {
+    const file = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch { /* 用户取消 */ }
+    } else {
+      const a = document.createElement("a");
+      a.download = filename; a.href = url; a.click();
+    }
+  };
+  sheet.querySelector(".es-close").onclick = () => { sheet.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+}
+
 /* ---------- 导出 ---------- */
 
 async function exportPng() {
@@ -399,16 +453,24 @@ async function exportPng() {
   try {
     const stage = $("stage");
     const pixelRatio = state.mode === "card" ? 3 : 2; // 竖图 540x720 → 1080x1440
-    const dataUrl = await htmlToImage.toPng(stage, {
-      pixelRatio,
-      backgroundColor: state.mode === "card" ? undefined : "#000",
-      filter: (node) => node.id !== "safe-guides", // 参考线不进成品
-    });
-    const a = document.createElement("a");
+    // 导出前临时还原移动端缩放：以 stage 为根节点捕获时 zoom/transform 会导致内容缩小、四周填充黑边
+    const prevZoom = stage.style.zoom, prevTransform = stage.style.transform;
+    stage.style.zoom = "1";
+    stage.style.transform = "none";
+    let blob;
+    try {
+      blob = await htmlToImage.toBlob(stage, {
+        pixelRatio,
+        backgroundColor: state.mode === "card" ? undefined : "#000",
+        filter: (node) => node.id !== "safe-guides", // 参考线不进成品
+      });
+    } finally {
+      stage.style.zoom = prevZoom;
+      stage.style.transform = prevTransform;
+    }
     const tag = state.tab === "custom" ? "custom" : (state.selected ? state.selected.id : "empty");
-    a.download = `${state.profile.handle}-card-${(state.selected && state.tab !== "custom" ? state.selected.date : todayISO()).replaceAll("-", "")}-${tag}.png`;
-    a.href = dataUrl;
-    a.click();
+    const name = `${state.profile.handle}-card-${(state.selected && state.tab !== "custom" ? state.selected.date : todayISO()).replaceAll("-", "")}-${tag}.png`;
+    deliverFile(blob, name, "点「保存 / 分享」存到相册，或长按图片保存");
   } catch (err) {
     alert("导出失败：" + err.message + "\n如果用了网络图片背景，可能是跨域限制，请下载后用「上传图片」。");
   } finally {
@@ -649,14 +711,11 @@ async function exportLive() {
     muxer.finalize();
 
     const blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
-    const a = document.createElement("a");
     const tag = state.tab === "custom" ? "custom" : (state.selected ? state.selected.id : "empty");
-    a.download = `${state.profile.handle}-live-${todayISO().replaceAll("-", "")}-${tag}.mp4`;
-    a.href = URL.createObjectURL(blob);
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    const name = `${state.profile.handle}-live-${todayISO().replaceAll("-", "")}-${tag}.mp4`;
+    deliverFile(blob, name, "保存到相册后，用 intoLive / 快捷指令转成实况照片再发布");
 
-    if (!localStorage.getItem("tcs-live-hint")) {
+    if (!isMobileLike() && !localStorage.getItem("tcs-live-hint")) {
       localStorage.setItem("tcs-live-hint", "1");
       alert("已导出 3 秒动效 MP4。\n\n发布为 Live 图：把视频传到手机，用 intoLive（免费 App）或快捷指令转成实况照片，抖音/小红书发布时从相册选择即可带「实况」标识。");
     }
@@ -830,6 +889,8 @@ async function init() {
   bind();
   initDrag();
   loadBackgrounds();
+  fitStageScale();
+  window.addEventListener("resize", fitStageScale);
   if (state.posts.length) selectPost(state.posts[0]);
 }
 
