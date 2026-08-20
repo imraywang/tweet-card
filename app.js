@@ -583,7 +583,19 @@ async function exportLive() {
     // 卡片只光栅化一次，逐帧只做画布合成
     btn.textContent = "准备卡片…";
     const card = $("tweet-card");
-    const cardCanvas = await htmlToImage.toCanvas(card, { pixelRatio: 2 });
+    // 捕获前临时摘掉浮动定位与 transform：以卡片为根节点光栅化时，
+    // absolute+left/top 50% 和 translate/scale 会被克隆进画布导致内容位移裁切
+    const hadFloating = card.classList.contains("floating");
+    const prevTransform = card.style.transform;
+    card.classList.remove("floating");
+    card.style.transform = "none";
+    let cardCanvas;
+    try {
+      cardCanvas = await htmlToImage.toCanvas(card, { pixelRatio: 2 });
+    } finally {
+      if (hadFloating) card.classList.add("floating");
+      card.style.transform = prevTransform;
+    }
     const s = (state.fitScale * state.cardScale) / 100;
     const cw = card.offsetWidth * 2 * s, ch = card.offsetHeight * 2 * s;
     const cx = W / 2 + state.cardX * 2, cy = H / 2 + state.cardY * 2;
