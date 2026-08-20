@@ -39,9 +39,11 @@ python3 -m http.server 8798
 
 `metrics` 用于素材库的「最热/最多收藏」排序；卡片上显示的互动数据是随机生成的，与它无关。
 
-数据来源三选一：
+数据来源四选一：
 
-- **UI 导入**：上面说的「导入推文库 JSON」，存在浏览器本机
+- **BYOK 同步**（页面 06 区）：填你自己的 X API Bearer Token（需 Basic 及以上套餐）和用户名，一键拉取并自动填充头像昵称。Key 只存你的浏览器 localStorage；因浏览器无法直连 api.x.com，请求经 tools.upthos.com 的无状态转发（开源 Worker，不记录不存储）。同账号再次同步自动增量。注意每拉一条消耗你套餐的 posts read 配额。
+
+- **UI 导入 JSON**：上面说的「导入推文库 JSON」，存在浏览器本机
 - **项目文件**：把文件存成项目根目录的 `posts.json`，加载优先级：本机导入 > `posts.json` > `posts.sample.json`
 - **X API 抓取**：如果你用 Claude Code 且接了 X API（MCP），直接让它「用 get_users_posts 拉我的原创推文，跑 scripts/build_posts.py 生成 posts.json」。原始返回存进 `data/raw/page-*.json`，脚本负责合并去重、抽取长推全文（note_tweet）、清洗 t.co 链接、按关键词自动分类。注意时间线接口最多回溯最近 3200 条；更早的历史用 X 设置里的「下载你的数据」归档补齐
 
