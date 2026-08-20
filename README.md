@@ -41,7 +41,7 @@ python3 -m http.server 8798
 
 数据来源四选一：
 
-- **BYOK 同步**（页面 06 区）：填你自己的 X API Bearer Token（需 Basic 及以上套餐）和用户名，一键拉取并自动填充头像昵称。Key 只存你的浏览器 localStorage；因浏览器无法直连 api.x.com，请求经 tools.upthos.com 的无状态转发（开源 Worker，不记录不存储）。同账号再次同步自动增量。注意每拉一条消耗你套餐的 posts read 配额。
+- **BYOK 同步**（页面 06 区）：填你自己的 X API Bearer Token 和用户名，一键拉取并自动填充头像昵称。Key 只存你的浏览器 localStorage；因浏览器无法直连 api.x.com，请求经 tools.upthos.com 的无状态转发（开源 Worker，不记录不存储）。同账号再次同步自动增量。计费：X API 已改为按量付费（2026-02 起，无 Free/Basic 订阅），推文读取约 $0.005/条、用户查询 $0.010/次，月上限 300 万条读取，先在 [X Developer Console](https://developer.x.com/) 充值 credits；24 小时内重复读取同一资源只计费一次。价格以 Console 实时显示为准。
 
 - **UI 导入 JSON**：上面说的「导入推文库 JSON」，存在浏览器本机
 - **项目文件**：把文件存成项目根目录的 `posts.json`，加载优先级：本机导入 > `posts.json` > `posts.sample.json`
