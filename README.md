@@ -60,6 +60,25 @@ python3 -m http.server 8798
 - **背景**：13 张风景照 + 10 张城市街景 + 10 张渐变（内置），支持本地上传和图片 URL
 - **导出**：html-to-image（DOM → SVG foreignObject → canvas）所见即所得，一键复制文案
 
+## 给 AI Agent 调用
+
+页面支持 URL 参数直接出图，任何带浏览器能力的 Agent（Claude Code、Codex、Playwright、浏览器 MCP…）都能调用，无需 API Key、无服务端：
+
+1. 打开 `https://tools.upthos.com/tweet-card?embed=1&text=<文字>&bg=photo-forest-path&mode=tall`
+2. 等待 `document.documentElement.dataset.ready === "1"`
+3. 读 `window.__cardDataUrl`，得到 `data:image/png;base64,...`，解码写文件即可
+
+```js
+// Playwright 示例
+await page.goto('https://tools.upthos.com/tweet-card?embed=1&text=' + encodeURIComponent('这是一条推文') + '&bg=photo-london-night&mode=tall&theme=dark');
+await page.waitForFunction(() => document.documentElement.dataset.ready);
+const dataUrl = await page.evaluate(() => window.__cardDataUrl);
+fs.writeFileSync('card.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
+```
+
+参数：`text` `date` / `name` `handle` `avatar` `verified` / `mode`(poster|tall|card) `theme` `scale` `opacity` `x` `y` / `bg`(内置 slug 或图片 URL) / `metrics=off` 或 `likes` `reposts` `replies` `bookmarks` `views` / `embed=1`。
+完整清单见 [tools.upthos.com/llms.txt](https://tools.upthos.com/llms.txt)。界面上的「复制链接」按钮会把当前设置打包成这样的链接。
+
 ## 项目结构
 
 ```
